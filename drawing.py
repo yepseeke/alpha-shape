@@ -35,6 +35,7 @@ def main():
     points_group.add_point(Point(100, 100))
 
     dragging = False
+    is_radius = True
     selected_index = None
     offset_x = 0
     offset_y = 0
@@ -66,7 +67,7 @@ def main():
 
         screen.fill(white)
 
-        alpha_shape.update(screen)
+        alpha_shape.update(screen, is_radius)
 
         pygame.display.flip()
 

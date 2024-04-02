@@ -5,7 +5,7 @@ from PointsCloud import PointsCloud
 
 
 class AlphaShape:
-    def __init__(self, alpha: float, points_cloud: PointsCloud, is_voronoi: bool = False):
+    def __init__(self, alpha: float, points_cloud: PointsCloud):
         self._alpha = alpha
         self._point_cloud = points_cloud
 
@@ -18,7 +18,7 @@ class AlphaShape:
     def move_selected_point(self, index: int, dx: float, dy: float):
         self._point_cloud.move_selected(index, dx, dy)
 
-    def update(self, screen):
+    def draw_alpha_shape(self, screen):
         points_array = self._point_cloud.get_matrix()
         triangles = self._point_cloud.get_triangulation()
 
@@ -38,4 +38,13 @@ class AlphaShape:
             if distance3 <= 2 / self._alpha:
                 pygame.draw.line(screen, (100, 100, 100), points_array[pi2], points_array[pi3], 2)
 
+    def update(self, screen, is_radius=True, is_voronoi=False):
+        color = (255, 127, 127)
+
+        self.draw_alpha_shape(screen)
+
         self._point_cloud.draw(screen)
+
+        if is_radius:
+            for point in self._point_cloud:
+                pygame.draw.circle(screen, color, (point.x, point.y), int(1 / self._alpha), 2)
