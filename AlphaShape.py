@@ -2,6 +2,7 @@ import pygame
 import numpy as np
 
 from PointsCloud import PointsCloud
+from Point import Point
 
 triangle_color = (173, 216, 230)
 circle_color = (255, 127, 127)
@@ -22,6 +23,9 @@ class AlphaShape:
 
     def move_selected_point(self, index: int, dx: float, dy: float):
         self._point_cloud.move_selected(index, dx, dy)
+
+    def add_point(self, point: Point):
+        self._point_cloud.add_point(point)
 
     def draw_alpha_shape(self, screen):
         points_array = self._point_cloud.get_matrix()
