@@ -3,9 +3,6 @@ import pygame
 import pygame_gui
 import sys
 
-from scipy.spatial import Delaunay
-from typing import List
-
 from PointsCloud import PointsCloud
 from Point import Point
 from AlphaShape import AlphaShape
@@ -22,26 +19,70 @@ red = (255, 0, 0)
 green = (0, 255, 0)
 blue = (0, 0, 255)
 
-manager = pygame_gui.UIManager((width, height))
-
-subsurface_width = 200
-subsurface_height = 100
-subsurface_color = (102, 205, 170)
-
-slider_rect = pygame.Rect(750, 30, 200, 10)
-
-switch_rect = pygame.Rect(800, 80, 50, 20)
 font = pygame.font.SysFont('arial', 16)
-text = font.render('alpha radius', True, black)
-text_rect = text.get_rect()
-text_rect.x = switch_rect.right + 20
-text_rect.centery = switch_rect.centery
-
-alpha = 0.02
 
 
-def main():
-    global alpha
+class Slider:
+    def __init__(self, x, y, width, height, min_value, max_value):
+        self._rect = pygame.Rect(x, y, width, height)  # (750, 30, 200, 10)
+
+        self._min_value = min_value
+        self._max_value = max_value
+
+        self._color = (134, 123, 123)
+        self._ball_color = (212, 42, 3)
+
+    def get_alpha(self, mouse_position):
+        mouse_x, _ = mouse_position
+        alpha = max(self._max_value * (mouse_x - self._rect.x) / self._rect.width, self._min_value)
+
+        return alpha
+
+    def update(self, screen, alpha):
+        pygame.draw.rect(screen, self._color, self._rect)
+        circle_x = int(self._rect.x + 1 / self._max_value * alpha * self._rect.width)
+        pygame.draw.circle(screen, self._ball_color, (circle_x, self._rect.height // 2 + self._rect.y), 5)
+
+    def get_rect(self):
+        return self._rect
+
+
+class NamedButton:
+
+    def __init__(self, x, y, width, height, title, font):
+        self._rect = pygame.Rect(x, y, width, height)
+        self._text = font.render(title, True, black)
+        self._text_rect = self._text.get_rect()
+        self._text_rect.x = self._rect.right + 20
+        self._text_rect.centery = self._rect.centery
+
+        self._text_color = (0, 0, 0)
+        self._on_color = (0, 255, 0)
+        self._off_color = (255, 0, 0)
+
+    def update(self, screen, is_what: bool):
+        if is_what:
+            pygame.draw.rect(screen, self._on_color, self._rect, 2)
+            pygame.draw.circle(screen, self._on_color, (self._rect.x + self._rect.width, self._rect.centery), 15)
+        else:
+            pygame.draw.rect(screen, self._off_color, self._rect, 2)
+            pygame.draw.circle(screen, self._off_color, (self._rect.x, self._rect.centery), 15)
+
+        screen.blit(self._text, self._text_rect)
+
+    def get_rect(self):
+        return self._rect
+
+
+def run():
+    is_dragging = False
+    is_radius = True
+    is_voronoi = True
+    selected_index = None
+    offset_x = 0
+    offset_y = 0
+    alpha = 0.1
+
     points = (np.array(
         [[-2, 2], [2, 2], [2, -2], [-2, -2], [-3, 0], [3, 0], [8, -6], [-8, -6], [-8, 6], [8, 6], [6, -8],
          [-6, -8], [-6, 8], [6, 8], [10, 0], [0, 10], [0, -10], [0, 10], [3, 10], [-3, 10], [3, -10],
@@ -50,13 +91,12 @@ def main():
     points_group = PointsCloud(points)
     points_group.add_point(Point(100, 100))
 
-    dragging = False
-    is_radius = True
-    selected_index = None
-    offset_x = 0
-    offset_y = 0
-
     alpha_shape = AlphaShape(alpha, points_group)
+
+    radius_button = NamedButton(800, 80, 50, 20, 'alpha radius', font)
+    voronoi_button = NamedButton(800, 120, 50, 20, 'voronoi', font)
+
+    slider = Slider(750, 30, 200, 10, 0.001, 0.2)
 
     while True:
 
@@ -71,45 +111,37 @@ def main():
                         distance = points_list[i].distance(Point(event.pos[0], event.pos[1]))
                         if distance <= points_list[i].get_radius():
                             selected_index = i
-                            dragging = True
+                            is_dragging = True
                             offset_x = points_list[i].x - event.pos[0]
                             offset_y = points_list[i].y - event.pos[1]
-                if switch_rect.collidepoint(event.pos):
+                if radius_button.get_rect().collidepoint(event.pos):
                     is_radius = not is_radius
+                if voronoi_button.get_rect().collidepoint(event.pos):
+                    is_voronoi = not is_voronoi
 
             elif event.type == pygame.MOUSEBUTTONUP:
                 if event.button == 1:
-                    dragging = False
+                    is_dragging = False
             elif event.type == pygame.MOUSEMOTION:
                 if pygame.mouse.get_pressed()[0]:
-                    if slider_rect.collidepoint(event.pos):
-                        mouse_x, _ = event.pos
-                        alpha = 0.2 * (mouse_x - slider_rect.x) / slider_rect.width
-                        alpha = max(alpha, 0.001)
-                        print(alpha)
+                    if slider.get_rect().collidepoint(event.pos):
+                        alpha = slider.get_alpha(event.pos)
 
-                if dragging:
+                if is_dragging:
                     alpha_shape.move_selected_point(selected_index, event.pos[0] + offset_x, event.pos[1] + offset_y)
 
         screen.fill(white)
 
-        if is_radius:
-            pygame.draw.rect(screen, green, switch_rect, 2)
-            pygame.draw.circle(screen, green, (switch_rect.x + switch_rect.width, switch_rect.centery), 15)
-        else:
-            pygame.draw.rect(screen, red, switch_rect, 2)
-            pygame.draw.circle(screen, red, (switch_rect.x, switch_rect.centery), 15)
-        screen.blit(text, text_rect)
-
-        pygame.draw.rect(screen, black, slider_rect)
-        circle_x = int(slider_rect.x + 5 * alpha * slider_rect.width)
-        pygame.draw.circle(screen, red, (circle_x, 35), 5)
-
         alpha_shape.update_alpha(alpha)
-        alpha_shape.update(screen, is_radius)
+        alpha_shape.update(screen, is_radius, is_voronoi)
+
+        slider.update(screen, alpha)
+
+        radius_button.update(screen, is_radius)
+        voronoi_button.update(screen, is_voronoi)
 
         pygame.display.flip()
 
 
 if __name__ == "__main__":
-    main()
+    run()
