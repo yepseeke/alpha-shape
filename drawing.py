@@ -151,7 +151,3 @@ def run():
         point_add_button.update(screen, is_adding)
 
         pygame.display.flip()
-
-
-if __name__ == "__main__":
-    run()
